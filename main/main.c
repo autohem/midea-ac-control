@@ -18,9 +18,7 @@
 #include "esp_log.h"
 #include "sdkconfig.h"
 
-
 #include <midea.h>
-
 
 /* Can use project configuration menu (idf.py menuconfig) to choose the GPIO to blink,
    or you can edit the following line and set a number here.
@@ -28,13 +26,11 @@
 
 //#define BLINK_GPIO CONFIG_BLINK_GPIO
 
-
 TimerHandle_t tmr = NULL;
 QueueHandle_t ir_tx_queue = NULL;
 TaskHandle_t tx_task_handle = NULL;
 TaskHandle_t heart_beat_task_handle = NULL;
 TaskHandle_t button_handler_task_handle = NULL;
-
 
 //tasks
 void task_heart_beat(void *arg);
@@ -44,20 +40,29 @@ void task_tx(void *arg);
 void timer_callback(void *arg);
 void button_callback(void *arg);
 
-
 void app_main(void)
 {
-   ir_tx_queue = xQueueCreate(1,sizeof(MideaFrameData));
-   xTaskCreate(task_heart_beat,"heart-beat",512,NULL,5,&heart_beat_task_handle);
-   xTaskCreate(task_tx,"TX-task",1024,NULL,10,&tx_task_handle);
+   ir_tx_queue = xQueueCreate(1, sizeof(MideaFrameData));
+   xTaskCreate(task_heart_beat, "heart-beat", 2048, NULL, 5, &heart_beat_task_handle);
+   // xTaskCreate(task_tx,"TX-task",1024,NULL,10,&tx_task_handle);
 
-   tmr = xTimerCreate("heart-beat-timer",pdMS_TO_TICKS(1000),true,NULL,timer_callback);
-   xTimerStart(tmr,pdMS_TO_TICKS(100));
-
+   tmr = xTimerCreate("heart-beat-timer", pdMS_TO_TICKS(1000), true, NULL, timer_callback);
+   xTimerStart(tmr, pdMS_TO_TICKS(100));
 }
 
-
-void timer_callback(void *arg){
-   vTaskNotifyGiveFromISR(heart_beat_task_handle,NULL);
+void timer_callback(void *arg)
+{
+   vTaskNotifyGiveFromISR(heart_beat_task_handle, NULL);
    portYIELD_FROM_ISR();
+}
+
+void task_heart_beat(void *arg)
+{
+   for (;;)
+   {
+      if (0 < ulTaskNotifyTake(pdFALSE, portMAX_DELAY))
+      {
+         ESP_LOGI("heart-beat", "alive");
+      }
+   }
 }
