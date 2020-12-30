@@ -16,6 +16,7 @@
 #include "esp_system.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
+#include "driver/rmt.h"
 #include "sdkconfig.h"
 
 #include <midea.h>
@@ -44,12 +45,15 @@ void button_callback(void *arg);
 static void IRAM_ATTR gpio_isr_handler(void *arg);
 
 //config functions
-void setup_gpio(gpio_num_t pin);
+void setup_gpio(void);
+void setup_rtm_driver(gpio_num_t pin, rmt_channel_t channel, uint32_t carrier_frequency);
 
 void app_main(void)
 {
 
-   gpio_device_config(GPIO_NUM_14);
+   setup_gpio();
+   setup_rtm_driver(GPIO_NUM_2,0,midea_carrier_frequency);
+   
    ir_tx_queue = xQueueCreate(1, sizeof(MideaFrameData));
    xTaskCreate(task_heart_beat, "heart-beat", 2048, NULL, 5, &heart_beat_task_handle);
    xTaskCreate(task_tx, "TX-task", 4096, NULL, 10, &tx_task_handle);
@@ -81,7 +85,7 @@ static void IRAM_ATTR gpio_isr_handler(void *arg)
    xQueueSendFromISR(ir_tx_queue, &data, NULL);
 }
 
-void setup_gpio(gpio_num_t pin)
+void setup_gpio()
 {
    gpio_config_t io_conf;
    //disable interrupt
@@ -100,25 +104,25 @@ void setup_gpio(gpio_num_t pin)
    //interrupt of rising edge
    io_conf.intr_type = GPIO_INTR_POSEDGE;
    //bit mask of the pins, use GPIO4/5 here
-   io_conf.pin_bit_mask = (1ULL << pin);
+   io_conf.pin_bit_mask = (1ULL << GPIO_NUM_14);
    //set as input mode
    io_conf.mode = GPIO_MODE_INPUT;
-   //enable pull-up mode 
+   //enable pull-up mode
    io_conf.pull_up_en = 1;
    gpio_config(&io_conf);
 
    //change gpio intrrupt type for one pin
-   gpio_set_intr_type(pin, GPIO_INTR_ANYEDGE);
+   gpio_set_intr_type(GPIO_NUM_14, GPIO_INTR_ANYEDGE);
 
    //install gpio isr service
    gpio_install_isr_service(0);
    //hook isr handler for specific gpio pin
-   gpio_isr_handler_add(pin, gpio_isr_handler, NULL);
+   gpio_isr_handler_add(GPIO_NUM_14, gpio_isr_handler, NULL);
 
    //remove isr handler for gpio number.
    gpio_isr_handler_remove(GPIO_NUM_2);
    //hook isr handler for specific gpio pin again
-   gpio_isr_handler_add(pin, gpio_isr_handler, NULL);
+   gpio_isr_handler_add(GPIO_NUM_14, gpio_isr_handler, NULL);
 }
 
 void task_tx(void *arg)
@@ -131,4 +135,20 @@ void task_tx(void *arg)
          ESP_LOGI("tx-task", "gpio-evt-received");
       }
    }
+}
+
+void setup_rtm_driver(gpio_num_t pin, rmt_channel_t channel, uint32_t carrier_frequency)
+{
+   rmt_config_t config = RMT_DEFAULT_CONFIG_TX(pin, channel);
+   config.tx_config.carrier_en = true;
+   config.tx_config.carrier_freq_hz = carrier_frequency;
+   config.clk_div = 80;
+   config.tx_config.loop_en = false;
+   config.tx_config.carrier_duty_percent = 75;
+   config.tx_config.carrier_level = RMT_CARRIER_LEVEL_HIGH;
+   config.tx_config.idle_level = RMT_IDLE_LEVEL_LOW;
+   config.tx_config.idle_output_en = true;
+
+   ESP_ERROR_CHECK(rmt_config(&config));
+   ESP_ERROR_CHECK(rmt_driver_install(config.channel, 0, 0));
 }
