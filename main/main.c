@@ -50,10 +50,9 @@ void setup_rtm_driver(gpio_num_t pin, rmt_channel_t channel, uint32_t carrier_fr
 
 void app_main(void)
 {
-
    setup_gpio();
-   setup_rtm_driver(GPIO_NUM_2,0,midea_carrier_frequency);
-   
+   setup_rtm_driver(GPIO_NUM_2, 0, midea_carrier_frequency);
+
    ir_tx_queue = xQueueCreate(1, sizeof(MideaFrameData));
    xTaskCreate(task_heart_beat, "heart-beat", 2048, NULL, 5, &heart_beat_task_handle);
    xTaskCreate(task_tx, "TX-task", 4096, NULL, 10, &tx_task_handle);
@@ -127,12 +126,31 @@ void setup_gpio()
 
 void task_tx(void *arg)
 {
+   MideaFrame frame;
    MideaFrameData data;
+   midea_tx_buffer_t tx_buffer;
+   initialize_midea_tx_buffer(&tx_buffer);
+
    for (;;)
    {
       if (xQueueReceive(ir_tx_queue, &data, portMAX_DELAY))
       {
          ESP_LOGI("tx-task", "gpio-evt-received");
+
+         frame.data = data;
+         frame.data.protocol_id = 0xB2;
+         frame.data.fan = FAN_AUTO;
+         frame.data.state= STATE_ON;
+         frame.data.temperature = T23C;
+
+         ESP_LOGI("tx-task","encodig data");
+         midea_encode(frame.raw, &tx_buffer);
+         ESP_LOGI("tx-task","data encoded!");
+
+         ESP_LOGI("tx-task","Tx start");
+         rmt_write_items(0, tx_buffer, midea_tx_buffer_size, true);
+         rmt_write_items(0, tx_buffer, midea_tx_buffer_size, true);
+         ESP_LOGI("tx-task","Tx end");
       }
    }
 }
