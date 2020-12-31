@@ -8,7 +8,7 @@
  ## Todo:
  - [ ] Implement wifi connection
  - [ ] Receive the ac commands from the wifi
- - [ ] Send the ac commands received form the wifi to the IR
+ - [ ] Send the ac commands received from the wifi to the IR
 
 
  ## References
