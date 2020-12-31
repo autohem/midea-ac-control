@@ -1,0 +1,3 @@
+[submodule "components/midea-esp"]
+	path = components/midea-esp
+	url = https://github.com/gui5/midea-esp.git

@@ -1,5 +1,15 @@
-# Blink Example
+# Midea AC Control
+ 
+ Controls remotely over wifi Midea ac.
 
-Starts a FreeRTOS task to blink an LED
+ Pin 2 is the output
+ Pin 14 is the signal input to toggle the output (for while).
 
-See the README.md file in the upper level 'examples' directory for more information about examples.
+ ## Todo:
+ - [ ] Implement wifi connection
+ - [ ] Receive the ac commands from the wifi
+ - [ ] Send the ac commands received form the wifi to the IR
+
+
+ ## References
+ - [Midea AC IR Protocol](http://kendziorra.nl/arduino-and-esp/119-midea-ac-ir-protocol)
