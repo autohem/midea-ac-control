@@ -19,13 +19,7 @@
 #include "driver/rmt.h"
 #include "sdkconfig.h"
 
-#include <midea.h>
-
-/* Can use project configuration menu (idf.py menuconfig) to choose the GPIO to blink,
-   or you can edit the following line and set a number here.
-*/
-
-//#define BLINK_GPIO CONFIG_BLINK_GPIO
+#include "midea.h"
 
 TimerHandle_t tmr = NULL;
 QueueHandle_t ir_tx_queue = NULL;
@@ -80,77 +74,65 @@ void task_heart_beat(void *arg)
 
 static void IRAM_ATTR gpio_isr_handler(void *arg)
 {
+    //for while some static data
    MideaFrameData data;
+   data.protocol_id = 0xB2;
+   data.fan = FAN_AUTO;
+   data.state = STATE_ON;
+   data.temperature = T23C;
+   
    xQueueSendFromISR(ir_tx_queue, &data, NULL);
 }
 
 void setup_gpio()
 {
    gpio_config_t io_conf;
-   //disable interrupt
+
+   /*
+      setup gpio 2 as output
+   */
    io_conf.intr_type = GPIO_INTR_DISABLE;
-   //set as output mode
    io_conf.mode = GPIO_MODE_OUTPUT;
-   //bit mask of the pins that you want to set,e.g.GPIO18/19
    io_conf.pin_bit_mask = (1ULL << GPIO_NUM_2);
-   //disable pull-down mode
    io_conf.pull_down_en = 0;
-   //disable pull-up mode
    io_conf.pull_up_en = 0;
-   //configure GPIO with the given settings
    gpio_config(&io_conf);
 
-   //interrupt of rising edge
+   /*
+      setup gpio 14 as input
+   */
    io_conf.intr_type = GPIO_INTR_POSEDGE;
-   //bit mask of the pins, use GPIO4/5 here
    io_conf.pin_bit_mask = (1ULL << GPIO_NUM_14);
-   //set as input mode
    io_conf.mode = GPIO_MODE_INPUT;
-   //enable pull-up mode
    io_conf.pull_up_en = 1;
+
    gpio_config(&io_conf);
-
-   //change gpio intrrupt type for one pin
    gpio_set_intr_type(GPIO_NUM_14, GPIO_INTR_ANYEDGE);
-
-   //install gpio isr service
    gpio_install_isr_service(0);
-   //hook isr handler for specific gpio pin
-   gpio_isr_handler_add(GPIO_NUM_14, gpio_isr_handler, NULL);
-
-   //remove isr handler for gpio number.
-   gpio_isr_handler_remove(GPIO_NUM_2);
-   //hook isr handler for specific gpio pin again
    gpio_isr_handler_add(GPIO_NUM_14, gpio_isr_handler, NULL);
 }
 
 void task_tx(void *arg)
 {
    MideaFrame frame;
-   MideaFrameData data;
    midea_tx_buffer_t tx_buffer;
-   initialize_midea_tx_buffer(&tx_buffer);
+
+   initialize_midea_tx_buffer(&tx_buffer[0]);
 
    for (;;)
    {
-      if (xQueueReceive(ir_tx_queue, &data, portMAX_DELAY))
+      if (xQueueReceive(ir_tx_queue, &frame.data, portMAX_DELAY))
       {
          ESP_LOGI("tx-task", "gpio-evt-received");
 
-         frame.data = data;
-         frame.data.protocol_id = 0xB2;
-         frame.data.fan = FAN_AUTO;
-         frame.data.state= STATE_ON;
-         frame.data.temperature = T23C;
+         ESP_LOGI("tx-task", "encodig data");
+         midea_encode(frame.raw, &tx_buffer[0]);
+         ESP_LOGI("tx-task", "data encoded!");
 
-         ESP_LOGI("tx-task","encodig data");
-         midea_encode(frame.raw, &tx_buffer);
-         ESP_LOGI("tx-task","data encoded!");
-
-         ESP_LOGI("tx-task","Tx start");
-         rmt_write_items(0, tx_buffer, midea_tx_buffer_size, true);
-         rmt_write_items(0, tx_buffer, midea_tx_buffer_size, true);
-         ESP_LOGI("tx-task","Tx end");
+         ESP_LOGI("tx-task", "Tx start");
+         rmt_write_items(0, &tx_buffer[0], midea_tx_buffer_size, true);
+         rmt_write_items(0, &tx_buffer[0], midea_tx_buffer_size, true);
+         ESP_LOGI("tx-task", "Tx end");
       }
    }
 }
