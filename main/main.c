@@ -75,10 +75,11 @@ void task_heart_beat(void *arg)
 static void IRAM_ATTR gpio_isr_handler(void *arg)
 {
     //for while some static data
-   MideaFrameData data;
+   static MideaFrameData data;
    data.protocol_id = 0xB2;
-   data.fan = FAN_AUTO;
    data.state = STATE_ON;
+   data.fan = FAN_MED;
+   data.mode = MODE_COOL;
    data.temperature = T23C;
    
    xQueueSendFromISR(ir_tx_queue, &data, NULL);
@@ -87,7 +88,6 @@ static void IRAM_ATTR gpio_isr_handler(void *arg)
 void setup_gpio()
 {
    gpio_config_t io_conf;
-
    /*
       setup gpio 2 as output
    */
@@ -99,17 +99,17 @@ void setup_gpio()
    gpio_config(&io_conf);
 
    /*
-      setup gpio 14 as input
+      setup gpio 5 as input
    */
    io_conf.intr_type = GPIO_INTR_POSEDGE;
-   io_conf.pin_bit_mask = (1ULL << GPIO_NUM_14);
+   io_conf.pin_bit_mask = (1ULL << GPIO_NUM_5);
    io_conf.mode = GPIO_MODE_INPUT;
    io_conf.pull_up_en = 1;
 
    gpio_config(&io_conf);
-   gpio_set_intr_type(GPIO_NUM_14, GPIO_INTR_ANYEDGE);
+   gpio_set_intr_type(GPIO_NUM_5, GPIO_INTR_ANYEDGE);
    gpio_install_isr_service(0);
-   gpio_isr_handler_add(GPIO_NUM_14, gpio_isr_handler, NULL);
+   gpio_isr_handler_add(GPIO_NUM_5, gpio_isr_handler, NULL);
 }
 
 void task_tx(void *arg)
@@ -126,12 +126,12 @@ void task_tx(void *arg)
          ESP_LOGI("tx-task", "gpio-evt-received");
 
          ESP_LOGI("tx-task", "encodig data");
-         midea_encode(frame.raw, &tx_buffer[0]);
+         midea_encode(frame.raw, &tx_buffer[1]);
          ESP_LOGI("tx-task", "data encoded!");
 
          ESP_LOGI("tx-task", "Tx start");
-         rmt_write_items(0, &tx_buffer[0], midea_tx_buffer_size, true);
-         rmt_write_items(0, &tx_buffer[0], midea_tx_buffer_size, true);
+         rmt_write_items(0, tx_buffer, midea_tx_buffer_size, true);
+         rmt_write_items(0, tx_buffer, midea_tx_buffer_size, true);
          ESP_LOGI("tx-task", "Tx end");
       }
    }
@@ -144,7 +144,7 @@ void setup_rtm_driver(gpio_num_t pin, rmt_channel_t channel, uint32_t carrier_fr
    config.tx_config.carrier_freq_hz = carrier_frequency;
    config.clk_div = 80;
    config.tx_config.loop_en = false;
-   config.tx_config.carrier_duty_percent = 75;
+   config.tx_config.carrier_duty_percent = 50;
    config.tx_config.carrier_level = RMT_CARRIER_LEVEL_HIGH;
    config.tx_config.idle_level = RMT_IDLE_LEVEL_LOW;
    config.tx_config.idle_output_en = true;
