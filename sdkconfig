@@ -125,6 +125,13 @@ CONFIG_BLINK_GPIO=5
 # end of Example Configuration
 
 #
+# Wifi Connection
+#
+CONFIG_NETWORK_NAME=""
+CONFIG_NETWORK_PASSWORD=""
+# end of Wifi Connection
+
+#
 # Compiler options
 #
 CONFIG_COMPILER_OPTIMIZATION_DEFAULT=y

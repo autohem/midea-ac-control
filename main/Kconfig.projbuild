@@ -12,3 +12,14 @@ menu "Example Configuration"
             GPIOs 35-39 are input-only so cannot be used as outputs.
 
 endmenu
+
+menu "Wifi Connection"
+    config NETWORK_NAME
+        string "network_name"
+        help
+            The network name desired to be connected
+    config NETWORK_PASSWORD
+        string "network_password"
+        help
+            Netork password
+endmenu
