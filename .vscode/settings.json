@@ -1,5 +1,5 @@
 {
     "idf.portWin": "COM4",
-    "editor.fontSize": 20,
+    "editor.fontSize": 18,
     "idf.flashType": "UART"
 }

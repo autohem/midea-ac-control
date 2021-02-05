@@ -13,13 +13,23 @@ menu "Example Configuration"
 
 endmenu
 
-menu "Wifi Connection"
-    config NETWORK_NAME
-        string "network_name"
+menu "WIFI Configuration"
+
+    config ESP_WIFI_SSID
+        string "WiFi SSID"
+        default "myssid"
         help
-            The network name desired to be connected
-    config NETWORK_PASSWORD
-        string "network_password"
+            SSID (network name)  to connect to.
+
+    config ESP_WIFI_PASSWORD
+        string "WiFi Password"
+        default "mypassword"
         help
-            Netork password
+            WiFi password (WPA or WPA2)  to use.
+
+    config ESP_MAXIMUM_RETRY
+        int "Maximum retry"
+        default 5
+        help
+            Set the Maximum retry to avoid station reconnecting to the AP unlimited when the AP is really inexistent.
 endmenu
